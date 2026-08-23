@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swarmsaga"
+version = "0.1.0"
+description = "Distributed Saga & Compensating Transaction Hypervisor for Multi-Agent Swarms"
+readme = "README.md"
+authors = [{ name = "Michael Gulden" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+swarmsaga = "swarmsaga.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"

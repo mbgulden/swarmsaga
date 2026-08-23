@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: swarmsaga
+Version: 0.1.0
+Summary: Distributed Saga & Compensating Transaction Hypervisor for Multi-Agent Swarms
+Author: Michael Gulden
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+
+# SwarmSaga: Distributed Transaction Hypervisor
+
+SwarmSaga is Stage 4 of the Swarm Suite Agent Hypervisor stack. It provides write-ahead state journaling, forward DAG execution, and deterministic topological backward compensation for multi-agent workflows across codebases, databases, containers, and external APIs.
