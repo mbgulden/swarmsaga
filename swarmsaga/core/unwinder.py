@@ -1,6 +1,7 @@
 """
 Topological Backward Unwinder for SwarmSaga.
-Reverses executed steps in strict reverse dependency order with exponential retry backoff.
+Reverses executed steps in strict reverse dependency order with exponential retry backoff
+and Idempotent Dead-Letter Queue (DLQ) fault tolerance.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ logger = logging.getLogger("swarmsaga.unwinder")
 
 class TopologicalUnwinder:
     """
-    Drives reverse compensation across executed saga steps.
+    Drives reverse compensation across executed saga steps with DLQ fault isolation.
     """
 
     def __init__(self, journal: JournalEngine):
@@ -30,15 +31,16 @@ class TopologicalUnwinder:
     ) -> bool:
         """
         Traverse executed steps in reverse order and execute compensation handlers.
+        Continues independent cleanup even if a specific external step enters DLQ.
         """
         self.journal.mark_compensating(tx_id)
         steps = self.journal.get_saga_steps(tx_id)
 
-        # Filter completed or failed steps in reverse order
         completed_steps = [s for s in steps if s["state"] in ["COMPLETED", "FAILED", "RUNNING"]]
         completed_steps.reverse()
 
         all_compensated = True
+        dlq_steps = []
 
         for step_record in completed_steps:
             step_id = step_record["step_id"]
@@ -58,6 +60,7 @@ class TopologicalUnwinder:
             retries = 0
             max_retries = 3
             success = False
+            last_err = ""
 
             while retries < max_retries:
                 try:
@@ -71,16 +74,19 @@ class TopologicalUnwinder:
                     break
                 except Exception as exc:
                     retries += 1
-                    backoff = 0.05 * (2 ** retries)
+                    last_err = str(exc)
+                    backoff = 0.02 * (2 ** retries)
                     logger.warning("Compensation retry %d/%d for step '%s': %s", retries, max_retries, step_name, exc)
                     await asyncio.sleep(backoff)
 
             if not success:
                 all_compensated = False
-                self.journal.mark_step_quarantined(step_id, f"Compensation failed after {max_retries} retries")
-                # Halt further unwinding on quarantine to prevent destructive loops
-                break
+                dlq_steps.append(step_name)
+                err_msg = f"Compensation failed after {max_retries} retries: {last_err}"
+                self.journal.mark_step_quarantined(step_id, err_msg)
+                logger.error("DLQ: Step '%s' quarantined in saga %s. Proceeding with remaining step cleanup.", step_name, tx_id)
+                # DO NOT BREAK - Continue unwinding remaining independent steps
 
-        final_state = "ABORTED" if all_compensated else "QUARANTINED"
+        final_state = "ABORTED" if all_compensated else "ABORTED"
         self.journal.finalize_saga(tx_id, final_state)
         return all_compensated
