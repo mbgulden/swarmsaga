@@ -54,7 +54,8 @@ class JournalEngine:
             try:
                 conn.execute("""
                     INSERT INTO sagas (tx_id, agent_id, state, created_at, updated_at, metadata_json)
-                    VALUES (?, ?, 'EXECUTING', ?, ?, ?);
+                    VALUES (?, ?, 'EXECUTING', ?, ?, ?)
+                    ON CONFLICT(tx_id) DO UPDATE SET updated_at = excluded.updated_at, agent_id = excluded.agent_id;
                 """, (tx_id, agent_id, now, now, json.dumps(metadata or {})))
                 conn.commit()
             finally:
