@@ -6,10 +6,17 @@ build-backend = "setuptools.build_meta"
 name = "swarmsaga"
 version = "0.1.0"
 description = "Distributed Saga & Compensating Transaction Hypervisor for Multi-Agent Swarms"
+license = "MIT"
 readme = "README.md"
-authors = [{ name = "Michael Gulden" }]
+authors = [{ name = "Michael Gulden", email = "michael@growthwebdev.com" }]
 requires-python = ">=3.10"
 dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
 
 [project.scripts]
 swarmsaga = "swarmsaga.cli:main"
@@ -18,3 +25,6 @@ swarmsaga = "swarmsaga.cli:main"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
+
+[project.urls]
+Homepage = "https://github.com/mbgulden/swarmsaga"
