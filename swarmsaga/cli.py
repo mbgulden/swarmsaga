@@ -6,10 +6,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
 import time
-from pathlib import Path
 
 from swarmsaga.core.unwinder import TopologicalUnwinder
 from swarmsaga.journal.engine import JournalEngine
@@ -85,10 +83,24 @@ def cmd_recover(args: argparse.Namespace) -> int:
     return 0
 
 
+def _package_version() -> str:
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        return version("swarmsaga")
+    except PackageNotFoundError:  # running from source without install metadata
+        return "unknown"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="swarmsaga",
         description="SwarmSaga: Distributed Saga & Compensating Transaction Hypervisor",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {_package_version()}",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
