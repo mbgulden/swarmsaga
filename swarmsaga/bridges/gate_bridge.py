@@ -6,10 +6,10 @@ Evaluates Escalation Score (E) before irreversible pivot steps.
 from __future__ import annotations
 
 import json
-import subprocess
 import shutil
+import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 class SwarmgateSagaBridge:
@@ -20,10 +20,10 @@ class SwarmgateSagaBridge:
     @staticmethod
     def evaluate_mutation(
         target_file: str | Path,
-        tx_id: Optional[str] = None,
-        proof_id: Optional[str] = None,
+        tx_id: str | None = None,
+        proof_id: str | None = None,
         agent_id: str = "default_agent"
-    ) -> Tuple[bool, str, Dict[str, Any]]:
+    ) -> tuple[bool, str, dict[str, Any]]:
         """
         Returns: (can_proceed_autonomously, tier, details)
         """
@@ -37,10 +37,10 @@ class SwarmgateSagaBridge:
             cmd.extend(["--tx-id", tx_id])
 
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10.0, check=False)
             data = json.loads(res.stdout.strip())
             tier = data.get("tier", "TIER_1_AUTO")
             can_proceed = (tier != "TIER_3_BARRIER")
             return can_proceed, tier, data
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - bridge degrades to "skipped" when swarmgate is absent
             return True, "TIER_1_AUTO", {"skipped": str(exc)}
