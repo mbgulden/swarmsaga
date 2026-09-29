@@ -9,7 +9,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from swarmsaga.journal.engine import JournalEngine
 
@@ -27,7 +28,7 @@ class TopologicalUnwinder:
     async def unwind(
         self,
         tx_id: str,
-        step_handlers: Dict[str, Callable[[Dict[str, Any]], Any]]
+        step_handlers: dict[str, Callable[[dict[str, Any]], Any]]
     ) -> bool:
         """
         Traverse executed steps in reverse order and execute compensation handlers.
@@ -48,7 +49,7 @@ class TopologicalUnwinder:
             comp_json = step_record.get("compensation_payload_json") or "{}"
             try:
                 comp_payload = json.loads(comp_json)
-            except Exception:
+            except json.JSONDecodeError:
                 comp_payload = {}
 
             handler = step_handlers.get(step_name)
@@ -72,7 +73,7 @@ class TopologicalUnwinder:
                     success = True
                     self.journal.mark_step_compensated(step_id)
                     break
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - retry/DLQ must survive any handler failure
                     retries += 1
                     last_err = str(exc)
                     backoff = 0.02 * (2 ** retries)
@@ -87,6 +88,6 @@ class TopologicalUnwinder:
                 logger.error("DLQ: Step '%s' quarantined in saga %s. Proceeding with remaining step cleanup.", step_name, tx_id)
                 # DO NOT BREAK - Continue unwinding remaining independent steps
 
-        final_state = "ABORTED" if all_compensated else "ABORTED"
+        final_state = "ABORTED" if all_compensated else "QUARANTINED"
         self.journal.finalize_saga(tx_id, final_state)
         return all_compensated
