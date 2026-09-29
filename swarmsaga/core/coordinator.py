@@ -9,7 +9,7 @@ import asyncio
 import graphlib
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from swarmsaga.core.step import Step
 from swarmsaga.core.unwinder import TopologicalUnwinder
@@ -23,10 +23,10 @@ class SagaCoordinator:
     Coordinates forward DAG execution and deterministic backward unwinding.
     """
 
-    def __init__(self, journal: Optional[JournalEngine] = None):
+    def __init__(self, journal: JournalEngine | None = None):
         self.journal = journal or JournalEngine()
         self.unwinder = TopologicalUnwinder(self.journal)
-        self._steps: Dict[str, Step] = {}
+        self._steps: dict[str, Step] = {}
 
     def add_step(self, step: Step) -> SagaCoordinator:
         self._steps[step.name] = step
@@ -34,11 +34,11 @@ class SagaCoordinator:
 
     async def execute(
         self,
-        tx_id: Optional[str] = None,
+        tx_id: str | None = None,
         agent_id: str = "default_agent",
-        initial_context: Optional[Dict[str, Any]] = None,
-        pivot_gate_check: Optional[Any] = None
-    ) -> Dict[str, Any]:
+        initial_context: dict[str, Any] | None = None,
+        pivot_gate_check: Any | None = None
+    ) -> dict[str, Any]:
         tx_id = tx_id or f"tx_{uuid.uuid4().hex[:16]}"
         self.journal.begin_saga(tx_id, agent_id)
 
@@ -47,15 +47,15 @@ class SagaCoordinator:
         context["agent_id"] = agent_id
 
         # Build dependency graph
-        graph: Dict[str, set[str]] = {}
+        graph: dict[str, set[str]] = {}
         for name, step in self._steps.items():
             graph[name] = set(step.dependencies)
 
         sorter = graphlib.TopologicalSorter(graph)
         sorter.prepare()
 
-        active_tasks: Dict[asyncio.Task, str] = {}
-        comp_handlers: Dict[str, Any] = {
+        active_tasks: dict[asyncio.Task, str] = {}
+        comp_handlers: dict[str, Any] = {
             name: step.compensate_handler for name, step in self._steps.items() if step.compensate_handler
         }
 
@@ -101,7 +101,7 @@ class SagaCoordinator:
                 break
 
             # Wait for any active step to complete
-            done, pending = await asyncio.wait(
+            done, _pending = await asyncio.wait(
                 active_tasks.keys(),
                 return_when=asyncio.FIRST_COMPLETED
             )
@@ -113,12 +113,12 @@ class SagaCoordinator:
                     if isinstance(res, dict):
                         context.update(res)
                     sorter.done(name)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 - any step failure triggers saga compensation
                     abort_triggered = True
                     abort_reason = str(exc)
                     logger.error("Step '%s' failed in saga %s: %s", node_name, tx_id, exc)
                     # Cancel all remaining parallel branches
-                    for p in active_tasks.keys():
+                    for p in active_tasks:
                         p.cancel()
                     break
 
