@@ -10,14 +10,12 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("swarmsaga.workspace")
 
 
 class PathTraversalSecurityError(PermissionError):
     """Raised when a path escapes the repository sandbox boundary."""
-    pass
 
 
 class GitWorktreeManager:
@@ -25,11 +23,11 @@ class GitWorktreeManager:
     Manages isolated ephemeral worktrees for sagas with strict chroot-like path containment.
     """
 
-    def __init__(self, repo_root: Optional[str | Path] = None):
+    def __init__(self, repo_root: str | Path | None = None):
         self.repo_root = Path(repo_root or os.getcwd()).resolve()
         self.sagas_dir = (self.repo_root / ".sagas").resolve()
 
-    def validate_safe_path(self, target_path: str | Path, worktree_path: Optional[Path] = None) -> Path:
+    def validate_safe_path(self, target_path: str | Path, worktree_path: Path | None = None) -> Path:
         """
         Enforces that target_path strictly resolves inside the worktree or repo_root.
         Prevents symlink directory traversal attacks (e.g. pointing to ~/.ssh or /etc).
@@ -47,7 +45,7 @@ class GitWorktreeManager:
             )
         return resolved
 
-    def _run_git(self, args: list[str], cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+    def _run_git(self, args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(
             ["git"] + args,
             cwd=str(cwd or self.repo_root),
@@ -92,8 +90,8 @@ class GitWorktreeManager:
             if worktree_path.exists():
                 try:
                     shutil.rmtree(worktree_path, ignore_errors=True)
-                except Exception:
-                    pass
+                except Exception as exc:  # noqa: BLE001 - best-effort fallback removal
+                    logger.warning("Fallback worktree removal failed for %s: %s", worktree_path, exc)
 
         self._run_git(["branch", "-D", branch_name])
         self._run_git(["worktree", "prune"])

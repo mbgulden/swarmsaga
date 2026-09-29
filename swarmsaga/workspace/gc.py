@@ -7,10 +7,8 @@ from __future__ import annotations
 
 import logging
 import os
-import shutil
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from swarmsaga.journal.engine import JournalEngine
 from swarmsaga.workspace.git_cow import GitWorktreeManager
@@ -23,18 +21,18 @@ class SagaGarbageCollector:
     Sweeps stalled or resolved saga worktrees and reclaims disk space.
     """
 
-    def __init__(self, journal: JournalEngine, repo_root: Optional[str | Path] = None, ttl_seconds: float = 172800.0):
+    def __init__(self, journal: JournalEngine, repo_root: str | Path | None = None, ttl_seconds: float = 172800.0):
         self.journal = journal
         self.repo_root = Path(repo_root or os.getcwd()).resolve()
         self.worktree_mgr = GitWorktreeManager(repo_root=self.repo_root)
         self.ttl_seconds = ttl_seconds
 
-    def sweep_stale_worktrees(self) -> List[str]:
+    def sweep_stale_worktrees(self) -> list[str]:
         """
         Scans .sagas/ directory and cleans up worktrees whose transactions
         are in COMMITTED, ABORTED, or QUARANTINED past TTL.
         """
-        cleaned_tx_ids: List[str] = []
+        cleaned_tx_ids: list[str] = []
         sagas_dir = self.repo_root / ".sagas"
         if not sagas_dir.exists():
             return cleaned_tx_ids
@@ -56,9 +54,7 @@ class SagaGarbageCollector:
                     age = now - updated_at
 
                     # Clean committed/aborted immediately or quarantined past TTL
-                    if state in ["COMMITTED", "ABORTED"] and age > 300.0:  # 5 min grace period
-                        should_clean = True
-                    elif state in ["QUARANTINED", "ABORTED_WITH_DLQ"] and age > self.ttl_seconds:
+                    if state in ["COMMITTED", "ABORTED"] and age > 300.0 or state in ["QUARANTINED", "ABORTED_WITH_DLQ"] and age > self.ttl_seconds:  # 5 min grace period
                         should_clean = True
 
                 if should_clean:
@@ -66,7 +62,7 @@ class SagaGarbageCollector:
                         self.worktree_mgr.cleanup_worktree(tx_id)
                         cleaned_tx_ids.append(tx_id)
                         logger.info("GC: Reclaimed worktree for saga %s", tx_id)
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 - GC is best-effort; one bad worktree must not stop the sweep
                         logger.warning("GC: Failed to clean worktree %s: %s", tx_id, exc)
 
         return cleaned_tx_ids

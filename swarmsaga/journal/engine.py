@@ -9,9 +9,8 @@ import json
 import sqlite3
 import threading
 import time
-import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from swarmsaga.journal.schema import SCHEMA_SQL
 
@@ -21,7 +20,7 @@ class JournalEngine:
     SQLite WAL-backed persistent state logging for distributed sagas.
     """
 
-    def __init__(self, db_path: Optional[str | Path] = None):
+    def __init__(self, db_path: str | Path | None = None):
         if db_path is None:
             base_dir = Path.home() / ".swarmsaga"
             base_dir.mkdir(parents=True, exist_ok=True)
@@ -47,7 +46,7 @@ class JournalEngine:
             finally:
                 conn.close()
 
-    def begin_saga(self, tx_id: str, agent_id: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def begin_saga(self, tx_id: str, agent_id: str, metadata: dict[str, Any] | None = None) -> None:
         now = time.time()
         with self._lock:
             conn = self._get_conn()
@@ -66,8 +65,8 @@ class JournalEngine:
         step_id: str,
         tx_id: str,
         step_name: str,
-        forward_payload: Optional[Dict[str, Any]] = None,
-        dependencies: Optional[List[str]] = None,
+        forward_payload: dict[str, Any] | None = None,
+        dependencies: list[str] | None = None,
         is_pivot: bool = False
     ) -> None:
         now = time.time()
@@ -96,7 +95,7 @@ class JournalEngine:
     def log_step_complete(
         self,
         step_id: str,
-        compensation_payload: Optional[Dict[str, Any]] = None
+        compensation_payload: dict[str, Any] | None = None
     ) -> None:
         now = time.time()
         with self._lock:
@@ -188,7 +187,7 @@ class JournalEngine:
             finally:
                 conn.close()
 
-    def get_saga(self, tx_id: str) -> Optional[Dict[str, Any]]:
+    def get_saga(self, tx_id: str) -> dict[str, Any] | None:
         with self._lock:
             conn = self._get_conn()
             try:
@@ -199,7 +198,7 @@ class JournalEngine:
             finally:
                 conn.close()
 
-    def get_saga_steps(self, tx_id: str) -> List[Dict[str, Any]]:
+    def get_saga_steps(self, tx_id: str) -> list[dict[str, Any]]:
         with self._lock:
             conn = self._get_conn()
             try:
@@ -208,7 +207,7 @@ class JournalEngine:
             finally:
                 conn.close()
 
-    def list_sagas(self, state: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_sagas(self, state: str | None = None) -> list[dict[str, Any]]:
         with self._lock:
             conn = self._get_conn()
             try:
@@ -220,7 +219,7 @@ class JournalEngine:
             finally:
                 conn.close()
 
-    def recover_dangling_sagas(self) -> List[str]:
+    def recover_dangling_sagas(self) -> list[str]:
         """Detect and return abandoned EXECUTING or COMPENSATING sagas after daemon restart."""
         with self._lock:
             conn = self._get_conn()

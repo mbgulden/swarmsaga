@@ -9,13 +9,13 @@ import json
 import logging
 import os
 import socket
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger("swarmsaga.bridges.lock")
 SWARMLOCK_SOCK = "/tmp/swarmlock.sock"
 
 
-def send_swarmlock_ipc(payload: Dict[str, Any], socket_path: str = SWARMLOCK_SOCK) -> Optional[Dict[str, Any]]:
+def send_swarmlock_ipc(payload: dict[str, Any], socket_path: str = SWARMLOCK_SOCK) -> dict[str, Any] | None:
     if not os.path.exists(socket_path):
         return None
     try:
@@ -26,7 +26,7 @@ def send_swarmlock_ipc(payload: Dict[str, Any], socket_path: str = SWARMLOCK_SOC
             line = client.recv(8192)
             if line:
                 return json.loads(line.decode("utf-8").strip())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - any IPC failure means swarmlock is unavailable
         logger.debug("Swarmlock IPC call failed: %s", exc)
         return None
     return None

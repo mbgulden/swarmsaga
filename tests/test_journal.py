@@ -4,6 +4,7 @@ Unit tests for JournalEngine WAL persistence and recovery.
 
 import tempfile
 from pathlib import Path
+
 from swarmsaga.journal.engine import JournalEngine
 
 
