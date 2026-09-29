@@ -4,6 +4,7 @@ Comprehensive lifecycle tests for SwarmSaga Forward Execution & Backward Compens
 
 import tempfile
 from pathlib import Path
+
 import pytest
 
 from swarmsaga.core.coordinator import SagaCoordinator
