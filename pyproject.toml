@@ -17,6 +17,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
 [project.scripts]
 swarmsaga = "swarmsaga.cli:main"
 
