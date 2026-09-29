@@ -3,7 +3,7 @@ Unit tests for GitWorktreeManager Copy-on-Write isolation.
 """
 
 import tempfile
-from pathlib import Path
+
 from swarmsaga.workspace.git_cow import GitWorktreeManager
 
 
